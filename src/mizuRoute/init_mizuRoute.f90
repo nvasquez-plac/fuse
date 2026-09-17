@@ -144,8 +144,15 @@ CONTAINS
   !---------------------------------------------------------------------
 
   ! get the spatial dimensions
-  nSpace(1) = info%space%ny_global ! latitude dimension
-  nSpace(2) = info%space%nx_global ! longitude dimension
+  ! NOTE: sim2d is allocated as (nSpace(1), nSpace(2)) in allocate_mizuroute_domain and is
+  !       indexed by mizuRoute as sim2d(i_index, j_index) in remap_runoff, so nSpace(1) must
+  !       be the x/longitude dimension. This matches standalone mizuRoute, which reads the
+  !       lat/lon dimension lengths into nSpace(1)/nSpace(2) but allocates the runoff array
+  !       as sim(nSpace(2), nSpace(1)) -- i.e. (nx, ny). Keeping the same convention here
+  !       means one remapping file (i_index -> x, j_index -> y) is valid for both the
+  !       embedded coupling and standalone mizuRoute.
+  nSpace(1) = info%space%nx_global ! longitude (x) dimension -- indexed by i_index
+  nSpace(2) = info%space%ny_global ! latitude  (y) dimension -- indexed by j_index
 
   ! Write an augmented hydrofabric if an output filename is provided.
   ntopAugmentMode = allocated(info%ntopo%hfabric_newfile) 
@@ -240,6 +247,27 @@ CONTAINS
     
     domain%remap%routing%hru_ix = match_index(domain%reach%hru_id, domain%remap%routing%hru_id, ierr, cmessage)
     if(ierr/=0)then; message=trim(message)//trim(cmessage); return; endif
+
+    ! check the remapping indices against the runoff grid: i_index addresses the
+    ! x/longitude dimension and j_index the y/latitude dimension. Checking here catches a
+    ! transposed or out-of-range remapping file at start-up -- remap_runoff only bounds-checks
+    ! at run time, and cannot detect a transposition at all when nx == ny.
+    if ( allocated(domain%remap%routing%i_index) .and. &
+         allocated(domain%remap%routing%j_index) ) then
+
+      if ( minval(domain%remap%routing%i_index) < 1         .or. &
+           maxval(domain%remap%routing%i_index) > nSpace(1) .or. &
+           minval(domain%remap%routing%j_index) < 1         .or. &
+           maxval(domain%remap%routing%j_index) > nSpace(2) ) then
+
+        write(cmessage,'(a,i0,a,i0,a)')                                            &
+          'remapping indices fall outside the runoff grid: i_index must lie in [1,', &
+          nSpace(1), '] and j_index in [1,', nSpace(2),                              &
+          '] (i_index -> longitude/x, j_index -> latitude/y)'
+        message=trim(message)//trim(cmessage); ierr=20; return
+
+      endif
+    endif
 
   endif  ! (if remapping file exists)
 
