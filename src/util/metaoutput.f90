@@ -118,7 +118,7 @@ MODULE metaoutput
   I=I+1; VNAME(I)='q_reach    '; LNAME(I)='streamflow at downstream end of each river reach   '; VUNIT(I)='m3/s  '; VTYPE(I)=VAR_REACH; isFlux(i)=.false.
   
   ! observations
-  I=I+1; VNAME(I)='q_obs      '; LNAME(I)='observed streamflow                                '; VUNIT(I)='m3/s  '; VTYPE(I)=VAR_OBS;   isFlux(i)=.false.
+  I=I+1; VNAME(I)='q_obs      '; LNAME(I)='observed runoff depth                              '; VUNIT(I)='mm/day'; VTYPE(I)=VAR_OBS;   isFlux(i)=.false.
 
   print *, 'Setting NOUTVAR (number of forcing, state and flux variables) to', I
   NOUTVAR=I
